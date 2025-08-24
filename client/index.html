@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CloudBiz Pro">
+    <meta name="application-name" content="CloudBiz Pro">
+    <meta name="msapplication-TileColor" content="#2563eb">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+    
+    <!-- SEO Meta Tags -->
+    <title>CloudBiz Pro - Business Management System</title>
+    <meta name="description" content="Complete cloud-based business management solution for inventory, customers, and sales. Manage your business efficiently with real-time analytics and automated workflows.">
+    <meta name="keywords" content="business management, inventory management, customer management, sales tracking, business analytics, cloud software">
+    <meta name="author" content="CloudBiz Pro">
+    
+    <!-- Open Graph Tags -->
+    <meta property="og:title" content="CloudBiz Pro - Business Management System">
+    <meta property="og:description" content="Complete cloud-based business management solution for inventory, customers, and sales.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cloudbiz-pro.vercel.app">
+    <meta property="og:site_name" content="CloudBiz Pro">
+    
+    <!-- Twitter Card Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="CloudBiz Pro - Business Management System">
+    <meta name="twitter:description" content="Complete cloud-based business management solution for inventory, customers, and sales.">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%232563eb' rx='20'/%3E%3Cpath d='M45 135L90 45L135 135H45Z' fill='white'/%3E%3Ccircle cx='90' cy='75' r='6' fill='%232563eb'/%3E%3C/svg%3E">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232563eb' rx='4'/%3E%3Cpath d='M8 24L16 8L24 24H8Z' fill='white'/%3E%3C/svg%3E">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Preload Critical Resources -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // PWA Install Prompt
+      let deferredPrompt;
+      let installButton;
+      
+      window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('beforeinstallprompt fired');
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Show install prompt after delay
+        setTimeout(() => {
+          if (!window.matchMedia('(display-mode: standalone)').matches) {
+            showInstallPrompt();
+          }
+        }, 3000);
+      });
+      
+      function showInstallPrompt() {
+        const installPrompt = document.createElement('div');
+        installPrompt.id = 'pwa-install-prompt';
+        installPrompt.className = 'fixed bottom-4 left-4 right-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-4 z-50';
+        installPrompt.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+              <i class="fas fa-download text-primary-600 dark:text-primary-400"></i>
+            </div>
+            <div class="flex-1">
+              <p class="font-medium text-slate-900 dark:text-white">Install CloudBiz Pro</p>
+              <p class="text-sm text-slate-600 dark:text-slate-400">Add to your home screen for easy access</p>
+            </div>
+            <div class="flex gap-2">
+              <button id="pwa-later" class="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
+                Later
+              </button>
+              <button id="pwa-install" class="px-3 py-1.5 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700">
+                Install
+              </button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(installPrompt);
+        
+        document.getElementById('pwa-install').addEventListener('click', async () => {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('PWA install prompt outcome:', outcome);
+            deferredPrompt = null;
+          }
+          installPrompt.remove();
+        });
+        
+        document.getElementById('pwa-later').addEventListener('click', () => {
+          installPrompt.remove();
+        });
+      }
+      
+      window.addEventListener('appinstalled', () => {
+        console.log('PWA was installed');
+        deferredPrompt = null;
+        // Hide any install prompts
+        const existingPrompt = document.getElementById('pwa-install-prompt');
+        if (existingPrompt) {
+          existingPrompt.remove();
+        }
+      });
+    </script>
+    
+    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
+    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
+  </body>
+</html>
