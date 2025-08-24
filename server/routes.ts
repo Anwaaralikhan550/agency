@@ -233,6 +233,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/admin/users/:id/reset-password', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { companyId } = req.user;
+      
+      // Check if user exists and belongs to same company
+      const user = await storage.getUser(id);
+      if (!user || user.companyId !== companyId) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // In a real application, you would:
+      // 1. Generate a secure password reset token
+      // 2. Store the token with expiration in the database
+      // 3. Send an email with the reset link
+      // For demo purposes, we'll just generate a temporary password and return it
+      
+      const tempPassword = Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+      
+      await storage.updateUser(id, { password: hashedPassword });
+      
+      // In production, this should be sent via email, not returned in response
+      res.json({ 
+        message: "Password reset successfully", 
+        tempPassword: tempPassword, // Only for demo - remove in production
+        note: "In production, this would be sent via email"
+      });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   app.delete('/api/admin/users/:id', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
     try {
       const { id } = req.params;

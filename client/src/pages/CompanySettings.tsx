@@ -14,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { type Company } from "@shared/schema";
 
 const CURRENCIES = [
   { value: "USD", label: "US Dollar ($)" },
@@ -53,6 +54,7 @@ interface CompanyData {
   language: string;
   timezone: string;
   status: string;
+  logo?: string;
   trialEndsAt?: string;
 }
 
@@ -70,8 +72,12 @@ export default function CompanySettings() {
     currency: "USD",
     language: "en",
     timezone: "UTC",
-    status: "active"
+    status: "active",
+    logo: ""
   });
+
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>("");
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -97,7 +103,7 @@ export default function CompanySettings() {
   }, [user]);
 
   // Fetch company data
-  const { data: company, isLoading: companyLoading } = useQuery({
+  const { data: company, isLoading: companyLoading } = useQuery<Company>({
     queryKey: ["/api/admin/company"],
     enabled: !!user && user.role === "admin",
   });
@@ -115,8 +121,10 @@ export default function CompanySettings() {
         language: company.language || "en",
         timezone: company.timezone || "UTC",
         status: company.status || "active",
-        trialEndsAt: company.trialEndsAt
+        logo: company.logo || "",
+        trialEndsAt: company.trialEndsAt ? company.trialEndsAt.toString() : undefined
       });
+      setLogoPreview(company.logo || "");
     }
   }, [company]);
 
@@ -162,6 +170,44 @@ export default function CompanySettings() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+          title: "File too large",
+          description: "Logo file size must be less than 2MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setLogoFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setLogoPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeLogo = () => {
+    setLogoFile(null);
+    setLogoPreview("");
+    setFormData(prev => ({ ...prev, logo: "" }));
   };
 
   if (isLoading || !user) {
@@ -261,6 +307,70 @@ export default function CompanySettings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  
+                  {/* Logo Upload Section */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-semibold">Company Logo</Label>
+                    <div className="flex items-start gap-6">
+                      {/* Logo Preview */}
+                      <div className="flex-shrink-0">
+                        <div className="h-24 w-24 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                          {logoPreview ? (
+                            <img 
+                              src={logoPreview} 
+                              alt="Company logo" 
+                              className="h-full w-full object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="text-center">
+                              <i className="fas fa-building text-2xl text-slate-400 dark:text-slate-500 mb-1"></i>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">No logo</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Upload Controls */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => document.getElementById('logo-upload')?.click()}
+                            data-testid="button-upload-logo"
+                          >
+                            <i className="fas fa-upload mr-2"></i>
+                            Upload Logo
+                          </Button>
+                          {logoPreview && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={removeLogo}
+                              data-testid="button-remove-logo"
+                            >
+                              <i className="fas fa-trash mr-2"></i>
+                              Remove
+                            </Button>
+                          )}
+                        </div>
+                        <input
+                          id="logo-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoChange}
+                          className="hidden"
+                        />
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Recommended size: 200x200px. Max file size: 2MB. Supported formats: JPG, PNG, SVG
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
                   
                   {/* Basic Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -411,8 +521,11 @@ export default function CompanySettings() {
                             language: company.language || "en",
                             timezone: company.timezone || "UTC",
                             status: company.status || "active",
-                            trialEndsAt: company.trialEndsAt
+                            logo: company.logo || "",
+                            trialEndsAt: company.trialEndsAt ? company.trialEndsAt.toString() : undefined
                           });
+                          setLogoPreview(company.logo || "");
+                          setLogoFile(null);
                         }
                       }}
                       data-testid="button-reset"

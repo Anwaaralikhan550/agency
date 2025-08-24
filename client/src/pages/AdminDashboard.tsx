@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { type AdminStats, type User } from "@shared/schema";
 
 export default function AdminDashboard() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -41,12 +42,12 @@ export default function AdminDashboard() {
     }
   }, [user]);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
     enabled: !!user && user.role === "admin",
   });
 
-  const { data: users = [], isLoading: usersLoading } = useQuery({
+  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
     enabled: !!user && user.role === "admin",
   });
@@ -116,7 +117,7 @@ export default function AdminDashboard() {
 
         <main className="p-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             <StatsCard
               title="Total Users"
               value={stats?.totalUsers || 0}
@@ -134,19 +135,27 @@ export default function AdminDashboard() {
               iconColor="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
             />
             <StatsCard
-              title="Pending Payments"
-              value={stats?.pendingPayments || 0}
-              change="Requires attention"
-              changeType="neutral"
-              icon="fas fa-credit-card"
-              iconColor="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+              title="Total Customers"
+              value={stats?.totalCustomers || 0}
+              change="Growing customer base"
+              changeType="positive"
+              icon="fas fa-handshake"
+              iconColor="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
             />
             <StatsCard
-              title="System Health"
-              value={`${stats?.systemHealth || 99.9}%`}
-              change="All systems operational"
+              title="Total Products"
+              value={stats?.totalProducts || 0}
+              change="Inventory items"
+              changeType="neutral"
+              icon="fas fa-boxes"
+              iconColor="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
+            />
+            <StatsCard
+              title="Monthly Revenue"
+              value={`$${stats?.monthlyRevenue || '0.00'}`}
+              change="This month's sales"
               changeType="positive"
-              icon="fas fa-server"
+              icon="fas fa-dollar-sign"
               iconColor="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
             />
           </div>
@@ -176,7 +185,7 @@ export default function AdminDashboard() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {users.slice(0, 5).map((user: any) => (
+                      {users.slice(0, 5).map((user) => (
                         <div
                           key={user.id}
                           className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg"

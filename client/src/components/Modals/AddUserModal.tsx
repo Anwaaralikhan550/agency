@@ -27,7 +27,7 @@ export function AddUserModal({ open, onOpenChange }: AddUserModalProps) {
       name: "",
       email: "",
       password: "",
-      role: "user",
+      role: "employee",
       status: "active",
     },
   });
@@ -127,8 +127,9 @@ export function AddUserModal({ open, onOpenChange }: AddUserModalProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="employee">Employee</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

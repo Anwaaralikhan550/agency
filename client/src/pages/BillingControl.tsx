@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { type Company, type User } from "@shared/schema";
 
 interface BillingInfo {
   companyStatus: string;
@@ -58,12 +59,12 @@ export default function BillingControl() {
   }, [user]);
 
   // Fetch company and billing data
-  const { data: company, isLoading: companyLoading } = useQuery({
+  const { data: company, isLoading: companyLoading } = useQuery<Company>({
     queryKey: ["/api/admin/company"],
     enabled: !!user && user.role === "admin",
   });
 
-  const { data: users = [], isLoading: usersLoading } = useQuery({
+  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
     enabled: !!user && user.role === "admin",
   });
@@ -72,14 +73,14 @@ export default function BillingControl() {
   useEffect(() => {
     if (company && users) {
       const isTrialAccount = company.trialEndsAt && new Date(company.trialEndsAt) > new Date();
-      const trialDaysLeft = isTrialAccount ? 
+      const trialDaysLeft = isTrialAccount && company.trialEndsAt ? 
         Math.ceil((new Date(company.trialEndsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
       setBillingInfo({
         companyStatus: company.status,
         subscriptionPlan: isTrialAccount ? "Trial" : "Enterprise",
         billingCycle: "monthly",
-        trialEndsAt: company.trialEndsAt,
+        trialEndsAt: company.trialEndsAt ? company.trialEndsAt.toString() : undefined,
         featuresUsed: {
           users: { current: users.length, limit: isTrialAccount ? 5 : 100 },
           storage: { current: 2.5, limit: isTrialAccount ? 5 : 100 }, // GB

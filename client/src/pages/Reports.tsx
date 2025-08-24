@@ -177,10 +177,58 @@ export default function Reports() {
   };
 
   const handleExportPDF = (dataType: string) => {
-    // Mock PDF export functionality
+    // Enhanced PDF export functionality
+    let reportTitle = "";
+    let content = "";
+    
+    switch (dataType) {
+      case "overview":
+        reportTitle = "Business Overview Report";
+        content = `Sales Revenue: $${reportData.sales.totalRevenue.toLocaleString()}\n` +
+                 `Total Orders: ${reportData.sales.totalOrders}\n` +
+                 `Average Order Value: $${reportData.sales.averageOrderValue}\n` +
+                 `Total Customers: ${reportData.customers.totalCustomers}\n` +
+                 `Inventory Items: ${reportData.inventory.totalItems}`;
+        break;
+      case "sales":
+        reportTitle = "Sales Report";
+        content = reportData.sales.monthlyData.map(item => 
+          `${item.month}: $${item.revenue} (${item.orders} orders)`
+        ).join('\n');
+        break;
+      case "inventory":
+        reportTitle = "Inventory Report";
+        content = reportData.inventory.topSellingProducts.map(item => 
+          `${item.name}: ${item.sold} sold, $${item.revenue} revenue`
+        ).join('\n');
+        break;
+      case "customers":
+        reportTitle = "Customer Report";
+        content = reportData.customers.topCustomers.map(item => 
+          `${item.name}: $${item.totalSpent} total, ${item.orders} orders`
+        ).join('\n');
+        break;
+      default:
+        reportTitle = "Business Report";
+        content = "Report data";
+    }
+
+    // Generate PDF content as text file (simplified for demo)
+    const pdfContent = `${reportTitle}\n${'='.repeat(reportTitle.length)}\n\nGenerated: ${new Date().toLocaleString()}\nDate Range: Last ${dateRange} days\n\n${content}`;
+    
+    const blob = new Blob([pdfContent], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${dataType}-report-${new Date().toISOString().split('T')[0]}.txt`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
     toast({
-      title: "PDF Export",
-      description: `${dataType} report will be generated and emailed to you shortly`,
+      title: "Report Generated",
+      description: `${reportTitle} exported successfully`,
     });
   };
 

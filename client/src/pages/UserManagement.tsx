@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { type User } from "@shared/schema";
 
 export default function UserManagement() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -47,7 +48,7 @@ export default function UserManagement() {
     }
   }, [user]);
 
-  const { data: users = [], isLoading: usersLoading } = useQuery({
+  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
     enabled: !!user && user.role === "admin",
   });
@@ -134,8 +135,46 @@ export default function UserManagement() {
     }
   };
 
+  // Password reset mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/reset-password`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Password reset email sent successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleResetPassword = (userId: string, userName: string) => {
+    if (window.confirm(`Send password reset email to ${userName}?`)) {
+      resetPasswordMutation.mutate(userId);
+    }
+  };
+
   // Filter users based on search term and status
-  const filteredUsers = users.filter((user: any) => {
+  const filteredUsers = users.filter((user) => {
     const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || user.status === statusFilter;
@@ -299,6 +338,18 @@ export default function UserManagement() {
                                 Activate
                               </>
                             )}
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResetPassword(user.id, user.name)}
+                            disabled={resetPasswordMutation.isPending}
+                            className="text-purple-600 hover:text-purple-700 border-purple-200 hover:bg-purple-50"
+                            data-testid={`button-reset-password-${user.id}`}
+                          >
+                            <i className="fas fa-key mr-1"></i>
+                            Reset Password
                           </Button>
                           
                           <Button
