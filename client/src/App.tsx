@@ -15,6 +15,10 @@ import UserManagement from "@/pages/UserManagement";
 import Inventory from "@/pages/Inventory";
 import Customers from "@/pages/Customers";
 import Sales from "@/pages/Sales";
+import CompanySettings from "@/pages/CompanySettings";
+import BillingControl from "@/pages/BillingControl";
+import Reports from "@/pages/Reports";
+import { SuperAdminPanel } from "@/components/SuperAdminPanel";
 
 function Router() {
   const { isAuthenticated, isLoading, user, isSuspended, suspensionReason, logout } = useAuth();
@@ -71,35 +75,7 @@ function Router() {
 
   // Super admin gets special panel
   if (user?.role === "super_admin") {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                CloudBiz Pro - Super Admin Panel
-              </h1>
-              <button 
-                onClick={() => logout && logout()}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="text-center">
-            <h2 className="text-xl text-gray-600 dark:text-gray-400">
-              Super Admin Panel - Company Management System
-            </h2>
-            <p className="mt-2 text-gray-500 dark:text-gray-500">
-              Manage all company accounts and system settings from here.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <SuperAdminPanel />;
   }
 
   // Routes for authenticated admin users
@@ -109,6 +85,9 @@ function Router() {
         <Route path="/" component={AdminDashboard} />
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/users" component={UserManagement} />
+        <Route path="/admin/company" component={CompanySettings} />
+        <Route path="/admin/billing" component={BillingControl} />
+        <Route path="/admin/reports" component={Reports} />
         <Route component={NotFound} />
       </Switch>
     );

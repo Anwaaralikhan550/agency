@@ -191,6 +191,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/admin/users/:id', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userData = updateUserSchema.parse(req.body);
+      
+      const user = await storage.updateUser(id, userData);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   app.patch('/api/admin/users/:id/status', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -214,6 +233,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/admin/users/:id', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { companyId } = req.user;
+      
+      // Check if user exists and belongs to same company
+      const user = await storage.getUser(id);
+      if (!user || user.companyId !== companyId) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Prevent deletion of the last admin
+      if (user.role === 'admin') {
+        const allAdmins = await storage.getAllUsers(companyId);
+        const activeAdmins = allAdmins.filter(u => u.role === 'admin' && u.status === 'active');
+        if (activeAdmins.length <= 1) {
+          return res.status(400).json({ message: "Cannot delete the last active admin" });
+        }
+      }
+
+      // For now, we'll just deactivate the user instead of actually deleting
+      // to preserve data integrity
+      const deactivatedUser = await storage.updateUserStatus(id, 'inactive');
+      res.json({ message: "User deactivated successfully", user: deactivatedUser });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   app.get('/api/admin/stats', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
     try {
       const { companyId } = req.user;
@@ -222,6 +271,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching admin stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // Company settings routes (Admin only)
+  app.get('/api/admin/company', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
+    try {
+      const { companyId } = req.user;
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      res.json(company);
+    } catch (error) {
+      console.error("Error fetching company:", error);
+      res.status(500).json({ message: "Failed to fetch company" });
+    }
+  });
+
+  app.patch('/api/admin/company', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
+    try {
+      const { companyId } = req.user;
+      const companyData = updateCompanySchema.parse(req.body);
+      
+      const company = await storage.updateCompany(companyId, companyData);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      res.json(company);
+    } catch (error) {
+      console.error("Error updating company:", error);
+      res.status(500).json({ message: "Failed to update company" });
     }
   });
 

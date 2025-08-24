@@ -1,0 +1,64 @@
+You are my full-stack SaaS development assistant.  
+We are building a multi-tenant SaaS application called "CloudBiz Pro" with 2 panels:  
+1. Admin Panel  
+2. User Panel  
+
+The app is already migrated to Replit with:  
+- React + TailwindCSS frontend  
+- Node.js + Express backend  
+- PostgreSQL database  
+- JWT + bcrypt authentication  
+- Multi-tenant setup with company isolation  
+- Super Admin billing control (active/inactive status)  
+
+Now I want you to **complete the entire SaaS in 4 Phases**.  
+Follow this roadmap exactly and implement each module step by step.  
+
+---
+
+### 🔹 Phase 1 – Admin Panel Completion
+- Create Admin Dashboard (stats: Users, Customers, Sales, Inventory Value)  
+- Company Settings Module (Company Name, Logo, Currency, Language, Timezone)  
+- User Management (Add/Edit/Delete, Roles: Admin/User, Password reset)  
+- Billing Control (Activate/Deactivate company → Suspended screen if inactive)  
+- Reports Module (Sales, Inventory, Customers with CSV/PDF export)
+
+---
+
+### 🔹 Phase 2 – User Panel Completion
+- Responsive Sidebar + Topbar navigation  
+- Sales & Invoicing Module (create invoice, customer + products, PDF download)  
+- Customer Management (Add/Edit/Delete, history of invoices)  
+- Inventory Management (Add/Edit/Delete products, low-stock alerts)  
+- Notifications System (low stock, unpaid invoices, system announcements)  
+- Profile Settings (update name, password, language preference)
+
+---
+
+### 🔹 Phase 3 – System Essentials
+- Authentication improvements (JWT expiry, auto logout)  
+- Multi-language support (English, Urdu, Arabic toggle per user)  
+- Audit Logs (record user actions: invoice created, stock edited)  
+- Error Handling (success/error messages, friendly 401/403/500 screens)
+
+---
+
+### 🔹 Phase 4 – Deployment & Scaling
+- Database Backup & Restore scripts for PostgreSQL  
+- Data export (Sales, Customers, Inventory)  
+- PWA refinements (push notifications, offline support)  
+- Security: rate limiting on login, strong password policy  
+
+---
+
+### 🔹 Important Notes
+- Always keep code modular and production-ready  
+- Use clean React components with TailwindCSS for UI  
+- Ensure all features are **tenant-isolated** (per company data separation)  
+- Keep Admin Panel and User Panel clear and mobile responsive  
+- Provide step-by-step implementation for each phase  
+
+---
+
+🚀 Goal: By the end, I should have a **complete, production-ready SaaS system (CloudBiz Pro)** with 2 panels (Admin + User), full business features, billing control, reports, multi-language, and deployment tools.
+

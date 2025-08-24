@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AdminSidebar } from "@/components/Layout/AdminSidebar";
 import { Header } from "@/components/Layout/Header";
 import { AddUserModal } from "@/components/Modals/AddUserModal";
+import { EditUserModal } from "@/components/Modals/EditUserModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,8 @@ export default function UserManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -82,9 +85,53 @@ export default function UserManagement() {
     },
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: "Success",
+        description: "User deactivated successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleToggleUserStatus = (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === "active" ? "inactive" : "active";
     updateUserStatusMutation.mutate({ userId, status: newStatus });
+  };
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setShowEditUserModal(true);
+  };
+
+  const handleDeleteUser = (userId: string, userName: string) => {
+    if (window.confirm(`Are you sure you want to deactivate ${userName}? This action will make the user inactive.`)) {
+      deleteUserMutation.mutate(userId);
+    }
   };
 
   // Filter users based on search term and status
@@ -221,26 +268,51 @@ export default function UserManagement() {
                           {user.status}
                         </Badge>
                         
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleUserStatus(user.id, user.status)}
-                          disabled={updateUserStatusMutation.isPending}
-                          className={user.status === "active" ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"}
-                          data-testid={`button-toggle-status-${user.id}`}
-                        >
-                          {user.status === "active" ? (
-                            <>
-                              <i className="fas fa-ban mr-1"></i>
-                              Deactivate
-                            </>
-                          ) : (
-                            <>
-                              <i className="fas fa-check mr-1"></i>
-                              Activate
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditUser(user)}
+                            className="text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50"
+                            data-testid={`button-edit-user-${user.id}`}
+                          >
+                            <i className="fas fa-edit mr-1"></i>
+                            Edit
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleUserStatus(user.id, user.status)}
+                            disabled={updateUserStatusMutation.isPending}
+                            className={user.status === "active" ? "text-orange-600 hover:text-orange-700 border-orange-200 hover:bg-orange-50" : "text-green-600 hover:text-green-700 border-green-200 hover:bg-green-50"}
+                            data-testid={`button-toggle-status-${user.id}`}
+                          >
+                            {user.status === "active" ? (
+                              <>
+                                <i className="fas fa-pause mr-1"></i>
+                                Suspend
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-play mr-1"></i>
+                                Activate
+                              </>
+                            )}
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user.id, user.name)}
+                            disabled={deleteUserMutation.isPending}
+                            className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                            data-testid={`button-delete-user-${user.id}`}
+                          >
+                            <i className="fas fa-trash mr-1"></i>
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -254,6 +326,12 @@ export default function UserManagement() {
       <AddUserModal
         open={showAddUserModal}
         onOpenChange={setShowAddUserModal}
+      />
+      
+      <EditUserModal
+        open={showEditUserModal}
+        onOpenChange={setShowEditUserModal}
+        user={selectedUser}
       />
     </div>
   );

@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: "fas fa-tachometer-alt" },
   { name: "User Management", href: "/admin/users", icon: "fas fa-users" },
+  { name: "Company Settings", href: "/admin/company", icon: "fas fa-building" },
+  { name: "Billing & Subscription", href: "/admin/billing", icon: "fas fa-credit-card" },
+  { name: "Reports & Analytics", href: "/admin/reports", icon: "fas fa-chart-bar" },
   { name: "Notifications", href: "/admin/notifications", icon: "fas fa-bell" },
   { name: "Activity Logs", href: "/admin/activity", icon: "fas fa-history" },
   { name: "Settings", href: "/admin/settings", icon: "fas fa-cog" },
