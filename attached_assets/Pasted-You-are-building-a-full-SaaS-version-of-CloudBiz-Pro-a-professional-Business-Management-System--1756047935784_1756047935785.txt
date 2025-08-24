@@ -1,0 +1,61 @@
+You are building a full SaaS version of "CloudBiz Pro" – a professional Business Management System.
+
+🔹 Core Requirements:
+1. Multi-Tenant Support:
+   - Each business/company should have its own workspace, database schema isolation, and admin.
+   - Tenant-based authentication: one admin per company can create/manage users under their company only.
+   - Data separation so one company cannot access another's data.
+
+2. Authentication & Authorization:
+   - Admin signup & login for businesses (email + password).
+   - Role-based access: Admin, Manager, Employee.
+   - Secure session management with JWT.
+
+3. Payments & Subscription (Manual Control):
+   - No Stripe integration required.
+   - Manual billing will be handled outside the system.
+   - Add "Account Status" field (active/inactive) in each company profile.
+   - Only Super Admin (SaaS Owner) can toggle company status.
+   - If a company is set to "inactive", their users can still log in but will only see a "Suspended / Contact Admin" screen instead of features.
+   - When active, all features are accessible again.
+
+4. Features for Each Company:
+   - Inventory management (products, stock levels, alerts).
+   - Customer management (CRM features).
+   - Sales & invoicing system.
+   - Reports & Analytics (charts, export PDF/Excel).
+   - Notifications (low stock, new sale, payment reminders).
+   - Multi-language support (English, Urdu, Arabic) with i18n.
+
+5. PWA + Mobile Ready:
+   - Progressive Web App support (installable on desktop/mobile).
+   - Push notifications enabled.
+   - Responsive, modern UI with React + TailwindCSS.
+
+6. Admin Super-Panel (SaaS Owner):
+   - Manage all companies/tenants.
+   - View active/inactive companies and system stats.
+   - Manually activate/deactivate any company depending on their payment.
+   - System-wide announcements.
+   - Total revenue input field (manual update).
+
+7. Tech Stack:
+   - Frontend: React + TailwindCSS
+   - Backend: Node.js (Express.js or NestJS)
+   - Database: PostgreSQL (Neon/Postgres with multi-tenant design)
+   - Auth: JWT + bcrypt for passwords
+   - Deployment: Replit + Neon PostgreSQL
+
+8. Quality Standards:
+   - Full CRUD for all modules.
+   - Fully functional SaaS flow (signup → workspace → dashboard → admin control).
+   - Clean UI, easy UX for both admins and users.
+   - Secure and scalable architecture.
+   - Demo accounts auto-seeded for testing.
+
+🔹 Deliverables:
+- Complete SaaS Business Management System (CloudBiz Pro SaaS Edition).
+- Admin Super Panel (SaaS Owner) with manual billing control.
+- Multi-tenant company dashboards with business features.
+- PWA enabled, ready to install on mobile/desktop.
+- Sample demo accounts for testing.
