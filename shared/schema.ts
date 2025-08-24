@@ -550,6 +550,7 @@ export type JWTPayload = {
   companyId: string | null;
   email: string;
   role: 'super_admin' | 'admin' | 'manager' | 'employee';
+  companyStatus?: string;
   permissions?: Record<string, boolean>;
 };
 

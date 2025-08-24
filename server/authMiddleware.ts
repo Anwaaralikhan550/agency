@@ -102,3 +102,88 @@ export const requirePermission = (permission: string): RequestHandler => {
     return res.status(403).json({ message: `Permission '${permission}' required` });
   };
 };
+
+// Cookie-based authentication middleware for better frontend integration
+export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  try {
+    const token = req.cookies.auth_token;
+    
+    if (!token) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    // Verify user still exists and is active
+    const user = await storage.getUser(payload.userId);
+    if (!user || user.status !== 'active') {
+      return res.status(401).json({ message: 'User not found or inactive' });
+    }
+
+    // Check if user's company exists and get its status
+    let companyStatus = 'active';
+    if (user.companyId) {
+      const company = await storage.getCompany(user.companyId);
+      if (company) {
+        companyStatus = company.status;
+      }
+    }
+
+    (req as any).user = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId,
+      companyStatus,
+    };
+
+    next();
+  } catch (error) {
+    console.error('Authentication error:', error);
+    res.status(401).json({ message: 'Unauthorized' });
+  }
+};
+
+// Super admin access middleware
+export const requireSuperAdmin: RequestHandler = (req, res, next) => {
+  const user = (req as any).user;
+  
+  if (!user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  if (user.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Super admin access required' });
+  }
+
+  next();
+};
+
+// Company status check middleware
+export const checkCompanyStatus: RequestHandler = (req, res, next) => {
+  const user = (req as any).user;
+  
+  if (!user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  // Super admin can access everything
+  if (user.role === 'super_admin') {
+    return next();
+  }
+
+  // If company is inactive, return suspended status
+  if (user.companyStatus === 'inactive') {
+    return res.status(403).json({ 
+      message: 'Account suspended', 
+      suspended: true,
+      reason: 'Your company account has been suspended. Please contact support.'
+    });
+  }
+
+  next();
+};
+

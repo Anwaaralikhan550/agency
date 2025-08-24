@@ -17,7 +17,7 @@ import Customers from "@/pages/Customers";
 import Sales from "@/pages/Sales";
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, isSuspended, suspensionReason, logout } = useAuth();
 
   // Show loading screen while checking authentication
   if (isLoading) {
@@ -38,6 +38,67 @@ function Router() {
         <Route path="/" component={Login} />
         <Route path="*" component={Login} />
       </Switch>
+    );
+  }
+
+  // Check for company suspension (except super admin)
+  if (isSuspended && user?.role !== 'super_admin') {
+    const SuspendedScreen = () => (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="w-full max-w-md mx-auto shadow-lg bg-white dark:bg-gray-800 rounded-lg p-6">
+          <div className="text-center">
+            <div className="rounded-full bg-red-100 dark:bg-red-900 p-4 mx-auto mb-4 w-fit">
+              <svg className="h-12 w-12 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Account Suspended</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              {suspensionReason || "Your company account has been suspended. Please contact support to resolve this issue."}
+            </p>
+            <button 
+              onClick={() => logout && logout()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              Switch Account
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+    return <SuspendedScreen />;
+  }
+
+  // Super admin gets special panel
+  if (user?.role === "super_admin") {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                CloudBiz Pro - Super Admin Panel
+              </h1>
+              <button 
+                onClick={() => logout && logout()}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="text-center">
+            <h2 className="text-xl text-gray-600 dark:text-gray-400">
+              Super Admin Panel - Company Management System
+            </h2>
+            <p className="mt-2 text-gray-500 dark:text-gray-500">
+              Manage all company accounts and system settings from here.
+            </p>
+          </div>
+        </div>
+      </div>
     );
   }
 

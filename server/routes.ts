@@ -2,8 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./replitAuth";
-import { isAuthenticated, createSession } from "./auth";
-import { insertUserSchema, insertCustomerSchema, insertInventorySchema, insertSaleSchema, updateUserSchema, updateCustomerSchema, updateInventorySchema } from "@shared/schema";
+import { isAuthenticated, requireRole, requireSuperAdmin, checkCompanyStatus } from "./authMiddleware";
+import { insertUserSchema, insertCustomerSchema, insertInventorySchema, insertSaleSchema, updateUserSchema, updateCustomerSchema, updateInventorySchema, insertCompanySchema, updateCompanySchema } from "@shared/schema";
+import { generateToken } from "./jwt";
 import bcrypt from "bcrypt";
 import { seedDatabase } from "./seed";
 
@@ -11,38 +12,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize database with seed data
   await seedDatabase();
   
-  // Session middleware
-  app.use(createSession());
   
   // Auth middleware
   await setupAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const user = req.currentUser;
+      const user = req.user;
+      let company = null;
+      
+      // Get company info if user belongs to one
+      if (user.companyId) {
+        company = await storage.getCompany(user.companyId);
+      }
+      
       // Remove password from response
       const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+      res.json({ ...userWithoutPassword, company });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
-  // User authentication routes (for email/password login)
   // Logout route
   app.post('/api/auth/logout', (req, res) => {
-    if (req.session) {
-      req.session.destroy((err) => {
-        if (err) {
-          return res.status(500).json({ message: "Could not log out" });
-        }
-        res.json({ message: "Logged out successfully" });
-      });
-    } else {
-      res.json({ message: "Logged out successfully" });
-    }
+    // Clear the JWT cookie
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+    res.json({ message: "Logged out successfully" });
   });
 
   app.post('/api/auth/login', async (req, res) => {
@@ -67,33 +69,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Account is inactive" });
       }
 
+      // Check company status if user belongs to a company
+      let company = null;
+      let companyStatus = 'active';
+      
+      if (user.companyId) {
+        company = await storage.getCompany(user.companyId);
+        if (company) {
+          companyStatus = company.status;
+        }
+      }
+
       // Update last login
       await storage.updateUserLastLogin(user.id);
 
-      // Set up session
-      (req.session as any).userId = user.id;
+      // Generate JWT token
+      const token = generateToken({
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        companyId: user.companyId,
+        companyStatus,
+      });
+
+      // Set JWT as HTTP-only cookie
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
 
       // Remove password from response
       const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
+      res.json({ ...userWithoutPassword, company, companyStatus });
     } catch (error) {
       console.error("Login error:", error);
       res.status(500).json({ message: "Login failed" });
     }
   });
 
-  // Admin routes
-  // Admin check middleware
-  const requireAdmin: any = (req: any, res: any, next: any) => {
-    if (req.currentUser?.role !== 'admin') {
-      return res.status(403).json({ message: "Admin access required" });
-    }
-    next();
-  };
-
-  app.get('/api/admin/users', isAuthenticated, requireAdmin, async (req: any, res) => {
+  // Super Admin routes (SaaS Owner)
+  app.get('/api/super-admin/companies', isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {
-      const users = await storage.getAllUsers();
+      const companies = await storage.getAllCompanies();
+      res.json(companies);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({ message: "Failed to fetch companies" });
+    }
+  });
+
+  app.post('/api/super-admin/companies', isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const companyData = insertCompanySchema.parse(req.body);
+      const company = await storage.createCompany(companyData);
+      res.json(company);
+    } catch (error) {
+      console.error("Error creating company:", error);
+      res.status(500).json({ message: "Failed to create company" });
+    }
+  });
+
+  app.patch('/api/super-admin/companies/:id/status', isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!['active', 'inactive'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be 'active' or 'inactive'" });
+      }
+
+      const company = await storage.updateCompany(id, { status });
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      res.json(company);
+    } catch (error) {
+      console.error("Error updating company status:", error);
+      res.status(500).json({ message: "Failed to update company status" });
+    }
+  });
+
+  app.get('/api/super-admin/stats', isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const stats = await storage.getSuperAdminStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching super admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // Company Admin routes
+  app.get('/api/admin/users', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
+    try {
+      const { companyId } = req.user;
+      const users = await storage.getAllUsers(companyId);
       // Remove passwords from response
       const usersWithoutPasswords = users.map(({ password, ...user }) => user);
       res.json(usersWithoutPasswords);
@@ -103,9 +176,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/users', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.post('/api/admin/users', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
+      const { companyId } = req.user;
+      const userData = insertUserSchema.parse({ ...req.body, companyId });
       const user = await storage.createUser(userData);
       
       // Remove password from response
@@ -117,12 +191,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/users/:id/status', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.patch('/api/admin/users/:id/status', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
       
-      if (!['active', 'inactive'].includes(status)) {
+      if (!['active', 'inactive', 'suspended'].includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
       }
 
@@ -140,9 +214,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/stats', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/stats', isAuthenticated, requireRole('admin'), checkCompanyStatus, async (req: any, res) => {
     try {
-      const stats = await storage.getAdminStats();
+      const { companyId } = req.user;
+      const stats = await storage.getAdminStats(companyId);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching admin stats:", error);
@@ -151,10 +226,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User stats route
-  app.get('/api/user/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/user/stats', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const stats = await storage.getUserStats(userId);
+      const { userId, companyId } = req.user;
+      const stats = await storage.getUserStats(userId, companyId);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching user stats:", error);
@@ -162,11 +237,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Customer routes
-  app.get('/api/customers', isAuthenticated, async (req: any, res) => {
+  // Customer routes (Multi-tenant)
+  app.get('/api/customers', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const customers = await storage.getCustomers(userId);
+      const { companyId } = req.user;
+      const customers = await storage.getCustomers(companyId);
       res.json(customers);
     } catch (error) {
       console.error("Error fetching customers:", error);
@@ -174,10 +249,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/customers', isAuthenticated, async (req: any, res) => {
+  app.post('/api/customers', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const customerData = insertCustomerSchema.parse({ ...req.body, userId });
+      const { userId, companyId } = req.user;
+      const customerData = insertCustomerSchema.parse({ ...req.body, userId, companyId });
       const customer = await storage.createCustomer(customerData);
       res.json(customer);
     } catch (error) {
@@ -186,13 +261,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/customers/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/customers/:id', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
+      const { companyId } = req.user;
       const { id } = req.params;
       const customerData = updateCustomerSchema.parse(req.body);
       
-      const customer = await storage.updateCustomer(id, customerData, userId);
+      const customer = await storage.updateCustomer(id, customerData, companyId);
       if (!customer) {
         return res.status(404).json({ message: "Customer not found" });
       }
@@ -204,12 +279,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/customers/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/customers/:id', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
+      const { companyId } = req.user;
       const { id } = req.params;
       
-      const success = await storage.deleteCustomer(id, userId);
+      const success = await storage.deleteCustomer(id, companyId);
       if (!success) {
         return res.status(404).json({ message: "Customer not found" });
       }
@@ -221,11 +296,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Inventory routes
-  app.get('/api/inventory', isAuthenticated, async (req: any, res) => {
+  // Inventory routes (Multi-tenant)
+  app.get('/api/inventory', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const inventory = await storage.getInventory(userId);
+      const { companyId } = req.user;
+      const inventory = await storage.getInventory(companyId);
       res.json(inventory);
     } catch (error) {
       console.error("Error fetching inventory:", error);
@@ -233,10 +308,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/inventory/low-stock', isAuthenticated, async (req: any, res) => {
+  app.get('/api/inventory/low-stock', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const lowStockItems = await storage.getLowStockItems(userId);
+      const { companyId } = req.user;
+      const lowStockItems = await storage.getLowStockItems(companyId);
       res.json(lowStockItems);
     } catch (error) {
       console.error("Error fetching low stock items:", error);
@@ -244,10 +319,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/inventory', isAuthenticated, async (req: any, res) => {
+  app.post('/api/inventory', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const itemData = insertInventorySchema.parse({ ...req.body, userId });
+      const { userId, companyId } = req.user;
+      const itemData = insertInventorySchema.parse({ ...req.body, userId, companyId });
       const item = await storage.createInventoryItem(itemData);
       res.json(item);
     } catch (error) {
@@ -256,13 +331,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/inventory/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/inventory/:id', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
+      const { companyId } = req.user;
       const { id } = req.params;
       const itemData = updateInventorySchema.parse(req.body);
       
-      const item = await storage.updateInventoryItem(id, itemData, userId);
+      const item = await storage.updateInventoryItem(id, itemData, companyId);
       if (!item) {
         return res.status(404).json({ message: "Inventory item not found" });
       }
@@ -274,12 +349,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/inventory/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/inventory/:id', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
+      const { companyId } = req.user;
       const { id } = req.params;
       
-      const success = await storage.deleteInventoryItem(id, userId);
+      const success = await storage.deleteInventoryItem(id, companyId);
       if (!success) {
         return res.status(404).json({ message: "Inventory item not found" });
       }
@@ -291,11 +366,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sales routes
-  app.get('/api/sales', isAuthenticated, async (req: any, res) => {
+  // Sales routes (Multi-tenant)
+  app.get('/api/sales', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const sales = await storage.getSales(userId);
+      const { companyId } = req.user;
+      const sales = await storage.getSales(companyId);
       res.json(sales);
     } catch (error) {
       console.error("Error fetching sales:", error);
@@ -303,11 +378,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/sales/recent', isAuthenticated, async (req: any, res) => {
+  app.get('/api/sales/recent', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
+      const { companyId } = req.user;
       const limit = parseInt(req.query.limit as string) || 10;
-      const sales = await storage.getRecentSales(userId, limit);
+      const sales = await storage.getRecentSales(companyId, limit);
       res.json(sales);
     } catch (error) {
       console.error("Error fetching recent sales:", error);
@@ -315,10 +390,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/sales', isAuthenticated, async (req: any, res) => {
+  app.post('/api/sales', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const saleData = insertSaleSchema.parse({ ...req.body, userId });
+      const { userId, companyId } = req.user;
+      const saleData = insertSaleSchema.parse({ ...req.body, userId, companyId });
       const sale = await storage.createSale(saleData);
       res.json(sale);
     } catch (error) {
@@ -327,11 +402,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Notifications routes
-  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+  // Notifications routes (Multi-tenant)
+  app.get('/api/notifications', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const notifications = await storage.getNotifications(userId);
+      const { userId, companyId } = req.user;
+      const notifications = await storage.getNotifications(userId, companyId);
       res.json(notifications);
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -339,10 +414,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/notifications/unread-count', isAuthenticated, async (req: any, res) => {
+  app.get('/api/notifications/unread-count', isAuthenticated, checkCompanyStatus, async (req: any, res) => {
     try {
-      const userId = req.userId;
-      const count = await storage.getUnreadNotificationCount(userId);
+      const { userId, companyId } = req.user;
+      const count = await storage.getUnreadNotificationCount(userId, companyId);
       res.json({ count });
     } catch (error) {
       console.error("Error fetching unread count:", error);
