@@ -1,0 +1,229 @@
+I want you to build a complete cloud-based software system that works like a desktop/mobile app but runs on Vercel hosting.
+It should have two sides:
+
+Admin Panel (my control system)
+
+User Panel (for companies/customers)
+
+Core Requirements:
+
+Simple, clean, modern UI/UX
+
+Secure login system (no one can bypass)
+
+Works as PWA (Progressive Web App) → User can install it like an app with icon/logo
+
+No Payment Gateway required → Instead, send monthly reminders for subscription renewal
+
+Only Admin can block/unblock users if they don’t pay
+
+Must be deployable on Vercel with a free database (Supabase or Neon PostgreSQL)
+
+🔹 Tech Stack (Must Use)
+
+Frontend: Next.js 14 (React + TailwindCSS + shadcn/ui components)
+
+Backend: Next.js API Routes (Node.js inside Next.js)
+
+Database: Supabase (PostgreSQL) or Neon (PostgreSQL free tier)
+
+Authentication: Supabase Auth (email + password login)
+
+Notifications: Email reminders + in-app alerts
+
+Deployment: Vercel (Free Hosting)
+
+App Feel: PWA with app icon/logo
+
+🔹 Database Schema (Important – Must Create First)
+Users Table
+
+id (UUID, primary key)
+
+name (text)
+
+email (unique)
+
+password (hashed)
+
+role (enum: “admin” / “user”)
+
+status (active / inactive)
+
+created_at (timestamp)
+
+last_login (timestamp)
+
+Customers Table
+
+id (UUID, primary key)
+
+user_id (FK → Users)
+
+name (text)
+
+phone (text)
+
+email (text)
+
+address (text)
+
+created_at (timestamp)
+
+Inventory Table
+
+id (UUID, primary key)
+
+user_id (FK → Users)
+
+product_name (text)
+
+category (text)
+
+stock (integer)
+
+price (decimal)
+
+created_at (timestamp)
+
+Sales Table
+
+id (UUID, primary key)
+
+user_id (FK → Users)
+
+customer_id (FK → Customers)
+
+product_id (FK → Inventory)
+
+quantity (integer)
+
+total_price (decimal)
+
+created_at (timestamp)
+
+Notifications Table
+
+id (UUID, primary key)
+
+user_id (FK → Users)
+
+type (payment_reminder, stock_alert, custom)
+
+message (text)
+
+status (sent / pending)
+
+created_at (timestamp)
+
+🔹 Features Breakdown
+🟢 Admin Panel (Build This First)
+
+Admin Login (email/password)
+
+Dashboard:
+
+Total Users
+
+Active vs Inactive Users
+
+Pending Payments
+
+User Management:
+
+Add New User (email + password + role)
+
+Edit User Info
+
+Activate/Deactivate (disconnect access)
+
+Notifications:
+
+Send payment reminder manually
+
+View sent notifications
+
+Activity Logs (see last login/activity of each user)
+
+🔵 User Panel (Build After Admin Panel)
+
+User Login (email/password)
+
+Dashboard:
+
+Total Products
+
+Low Stock Alerts
+
+Total Customers
+
+Recent Sales
+
+Inventory Management:
+
+Add/Edit/Delete Products
+
+Stock level updates
+
+Low stock alerts
+
+Customer Management:
+
+Add/Edit/Delete Customers
+
+Customer purchase history
+
+Sales Management:
+
+Record new sale
+
+Auto-calculate total price
+
+Generate reports (daily/weekly/monthly)
+
+Notifications:
+
+Monthly payment reminder
+
+Low stock alerts
+
+🔹 Security Rules
+
+Passwords must be hashed (never stored as plain text)
+
+Only Admin can deactivate any user
+
+Users cannot see each other’s data (row-level security by user_id)
+
+Database access only via backend (not directly from frontend)
+
+🔹 Development Order (Step by Step)
+
+Setup Next.js + Tailwind + Supabase project
+
+Create Database Schema (Users, Customers, Inventory, Sales, Notifications)
+
+Build Admin Panel first (Login → Dashboard → User Management)
+
+Build User Panel (Login → Dashboard → Inventory → Customers → Sales)
+
+Add Notification System (email + in-app alerts)
+
+Convert app into PWA (installable with icon/logo)
+
+Deploy on Vercel + connect Supabase DB
+
+🔹 Final Delivery Requirements
+
+Full project code (frontend + backend)
+
+Working demo deployed on Vercel
+
+App installable as PWA with logo
+
+Admin credentials (default: admin@system.com
+ / password: admin123)
+
+Documentation (README.md with setup instructions)
+
+👉 Now generate this project step by step. Start with Database Schema and Admin Panel first. Write clean, modular, and well-commented code.
