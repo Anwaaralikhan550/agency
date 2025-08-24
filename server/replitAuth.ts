@@ -63,6 +63,10 @@ async function upsertUser(
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    name: `${claims["first_name"] || ""} ${claims["last_name"] || ""}`.trim() || claims["email"] || "User",
+    password: "replit-oauth-user", // Placeholder for OAuth users
+    role: 'user',
+    status: 'active',
   });
 }
 

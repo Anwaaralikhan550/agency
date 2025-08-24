@@ -42,12 +42,8 @@ export default function Login() {
         title: "Success",
         description: "Logged in successfully",
       });
-      // Redirect based on role
-      if (user.role === "admin") {
-        window.location.href = "/admin";
-      } else {
-        window.location.href = "/";
-      }
+      // Refresh the page to update auth state
+      window.location.reload();
     },
     onError: (error) => {
       toast({

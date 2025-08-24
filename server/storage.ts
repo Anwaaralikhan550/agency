@@ -22,7 +22,7 @@ import {
   type UserStats,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, count, sum, desc, lt } from "drizzle-orm";
+import { eq, and, count, sum, desc, lt, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -163,7 +163,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(customers)
       .where(and(eq(customers.id, id), eq(customers.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Inventory operations
@@ -197,7 +197,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(inventory)
       .where(and(eq(inventory.id, id), eq(inventory.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getLowStockItems(userId: string): Promise<Inventory[]> {
@@ -338,7 +338,7 @@ export class DatabaseStorage implements IStorage {
       totalProducts: totalProductsResult.count,
       lowStockAlerts: lowStockItems.length,
       totalCustomers: totalCustomersResult.count,
-      monthlyRevenue: monthlyRevenueResult[0]?.total || '0',
+      monthlyRevenue: monthlyRevenueResult.total || '0',
     };
   }
 }
