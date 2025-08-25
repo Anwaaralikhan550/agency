@@ -44,17 +44,17 @@ export default function Sales() {
 
   const { data: sales = [], isLoading: salesLoading } = useQuery({
     queryKey: ["/api/sales"],
-    enabled: !!user && user.role === "user",
+    enabled: !!user && (user.role === "employee" || user.role === "manager"),
   });
 
   const { data: customers = [] } = useQuery({
     queryKey: ["/api/customers"],
-    enabled: !!user && user.role === "user",
+    enabled: !!user && (user.role === "employee" || user.role === "manager"),
   });
 
   const { data: inventory = [] } = useQuery({
     queryKey: ["/api/inventory"],
-    enabled: !!user && user.role === "user",
+    enabled: !!user && (user.role === "employee" || user.role === "manager"),
   });
 
   // Create lookup maps for customer and product names

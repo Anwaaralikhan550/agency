@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { type Inventory } from "@shared/schema";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -50,9 +51,9 @@ export default function Inventory() {
     }
   }, [user]);
 
-  const { data: inventory = [], isLoading: inventoryLoading } = useQuery({
+  const { data: inventory = [], isLoading: inventoryLoading } = useQuery<Inventory[]>({
     queryKey: ["/api/inventory"],
-    enabled: !!user && user.role === "user",
+    enabled: !!user && (user.role === "employee" || user.role === "manager"),
   });
 
   const form = useForm<UpdateInventory>({
@@ -172,7 +173,7 @@ export default function Inventory() {
     );
   }
 
-  if (user.role !== "user") {
+  if (user.role === "admin" || user.role === "super_admin") {
     return null; // Will redirect via useEffect
   }
 

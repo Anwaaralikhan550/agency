@@ -50,7 +50,7 @@ export default function Customers() {
 
   const { data: customers = [], isLoading: customersLoading } = useQuery({
     queryKey: ["/api/customers"],
-    enabled: !!user && user.role === "user",
+    enabled: !!user && (user.role === "employee" || user.role === "manager"),
   });
 
   const form = useForm<UpdateCustomer>({

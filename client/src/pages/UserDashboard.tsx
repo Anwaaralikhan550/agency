@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { type UserStats, type Sale, type Inventory } from "@shared/schema";
 
 export default function UserDashboard() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -43,19 +44,19 @@ export default function UserDashboard() {
     }
   }, [user]);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<UserStats>({
     queryKey: ["/api/user/stats"],
-    enabled: !!user && user.role === "user",
+    enabled: !!user && (user.role === "employee" || user.role === "manager"),
   });
 
-  const { data: recentSales = [], isLoading: salesLoading } = useQuery({
+  const { data: recentSales = [], isLoading: salesLoading } = useQuery<Sale[]>({
     queryKey: ["/api/sales/recent"],
-    enabled: !!user && user.role === "user",
+    enabled: !!user && (user.role === "employee" || user.role === "manager"),
   });
 
-  const { data: lowStockItems = [], isLoading: lowStockLoading } = useQuery({
+  const { data: lowStockItems = [], isLoading: lowStockLoading } = useQuery<Inventory[]>({
     queryKey: ["/api/inventory/low-stock"],
-    enabled: !!user && user.role === "user",
+    enabled: !!user && (user.role === "employee" || user.role === "manager"),
   });
 
   if (isLoading || !user) {
@@ -69,7 +70,7 @@ export default function UserDashboard() {
     );
   }
 
-  if (user.role !== "user") {
+  if (user.role === "admin" || user.role === "super_admin") {
     return null; // Will redirect via useEffect
   }
 
