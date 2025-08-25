@@ -66,45 +66,11 @@ export default function Reports() {
   const [dateRange, setDateRange] = useState("30");
   const [reportType, setReportType] = useState("overview");
 
-  // Mock report data - In real app, this would come from API
-  const reportData: ReportData = {
-    sales: {
-      totalRevenue: 125000,
-      totalOrders: 450,
-      averageOrderValue: 278,
-      monthlyData: [
-        { month: "Jan", revenue: 18000, orders: 65 },
-        { month: "Feb", revenue: 22000, orders: 75 },
-        { month: "Mar", revenue: 19500, orders: 68 },
-        { month: "Apr", revenue: 26000, orders: 92 },
-        { month: "May", revenue: 24500, orders: 88 },
-        { month: "Jun", revenue: 15000, orders: 62 }
-      ]
-    },
-    inventory: {
-      totalItems: 250,
-      lowStockItems: 12,
-      outOfStockItems: 3,
-      topSellingProducts: [
-        { name: "Premium Widget Pro", sold: 145, revenue: 42500 },
-        { name: "Essential Tool Kit", sold: 98, revenue: 23520 },
-        { name: "Advanced Solution", sold: 76, revenue: 30400 },
-        { name: "Basic Package", sold: 65, revenue: 9750 },
-        { name: "Enterprise Suite", sold: 42, revenue: 21000 }
-      ]
-    },
-    customers: {
-      totalCustomers: 180,
-      newCustomersThisMonth: 25,
-      topCustomers: [
-        { name: "TechCorp Solutions", totalSpent: 15600, orders: 12 },
-        { name: "Global Industries", totalSpent: 12300, orders: 8 },
-        { name: "Innovation Labs", totalSpent: 9800, orders: 15 },
-        { name: "Future Systems", totalSpent: 8500, orders: 6 },
-        { name: "Digital Dynamics", totalSpent: 7200, orders: 9 }
-      ]
-    }
-  };
+  // Fetch report data from API
+  const { data: reportData, isLoading: reportsLoading, error: reportsError } = useQuery<ReportData>({
+    queryKey: ['/api/admin/reports'],
+    enabled: isAuthenticated && user?.role === 'admin'
+  });
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -130,6 +96,8 @@ export default function Reports() {
   }, [user]);
 
   const handleExportCSV = (dataType: string) => {
+    if (!reportData) return;
+    
     let csvContent = "";
     let filename = "";
     
@@ -177,6 +145,8 @@ export default function Reports() {
   };
 
   const handleExportPDF = (dataType: string) => {
+    if (!reportData) return;
+    
     // Enhanced PDF export functionality
     let reportTitle = "";
     let content = "";
@@ -245,6 +215,89 @@ export default function Reports() {
 
   if (user.role !== "admin") {
     return null; // Will redirect via useEffect
+  }
+
+  // Handle loading state for reports data
+  if (reportsLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <AdminSidebar />
+        <div className="ml-64 min-h-screen">
+          <Header
+            title="Reports & Analytics"
+            subtitle="Business insights and data analytics"
+          />
+          <main className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <p className="text-slate-600 dark:text-slate-400">Loading report data...</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state for reports data
+  if (reportsError) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <AdminSidebar />
+        <div className="ml-64 min-h-screen">
+          <Header
+            title="Reports & Analytics"
+            subtitle="Business insights and data analytics"
+          />
+          <main className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center py-12">
+                <div className="text-red-600 mb-4">
+                  <i className="fas fa-exclamation-triangle text-4xl"></i>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                  Failed to load report data
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400">
+                  There was an error loading the reports. Please try again later.
+                </p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle no data state
+  if (!reportData) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <AdminSidebar />
+        <div className="ml-64 min-h-screen">
+          <Header
+            title="Reports & Analytics"
+            subtitle="Business insights and data analytics"
+          />
+          <main className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center py-12">
+                <div className="text-slate-400 mb-4">
+                  <i className="fas fa-chart-bar text-4xl"></i>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                  No report data available
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Start by adding some sales and inventory data to generate reports.
+                </p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
   }
 
   return (
