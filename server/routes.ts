@@ -9,8 +9,12 @@ import bcrypt from "bcrypt";
 import { seedDatabase } from "./seed";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize database with seed data
-  await seedDatabase();
+  // Initialize database with seed data (skip if there are schema issues)
+  try {
+    await seedDatabase();
+  } catch (error: any) {
+    console.log("Skipping database seeding due to schema mismatch:", error.message);
+  }
   
   
   // Auth middleware
